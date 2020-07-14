@@ -2,7 +2,7 @@
 	"manifest_version": 2,
 	"name": "IPX Coveo at Coveo",
 	"short_name": "ipx-coveo-at-coveo",
-	"version": "0.4",
+	"version": "1.00",
 	"description": "IPX to access Coveo at Coveo",
 
 	"icons": {
@@ -19,7 +19,7 @@
 	},
 
 	"content_scripts": [{
-		"run_at": "document_idle",
+		"run_at": "document_end",
 		"matches": [
 			"<all_urls>"
 		],
@@ -32,6 +32,7 @@
 	"permissions": [
     "tabs",
     "cookies",
+    "notifications",
     "*://*/"
 	]
 
