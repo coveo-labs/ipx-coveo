@@ -1,12 +1,5 @@
 "use strict";
 
-//the domain used
-const c_domain = "searchhipaa.cloud.coveo.com";
-//the page to get the access token for
-const c_page = "/pages/coveononproductionmux3a10i";
-//url pointing to the full search page, so that authentication is triggered
-const c_url =
-  "https://searchhipaa.cloud.coveo.com/pages/coveononproductionmux3a10i/Coveo";
 
 var g_window;
 var g_token;

@@ -2,7 +2,7 @@
 	"manifest_version": 2,
 	"name": "IPX Coveo at Coveo",
 	"short_name": "ipx-coveo-at-coveo",
-	"version": "1.00",
+	"version": "1.14",
 	"description": "IPX to access Coveo at Coveo",
 
 	"icons": {
@@ -12,7 +12,7 @@
 
 	},
 	"background": {
-		"scripts": ["js/background.js"]
+		"scripts": ["js/global.js","js/background.js"]
 	},
 	"browser_action": {
 		"default_icon": "/images/icon.png"
@@ -24,7 +24,7 @@
 			"<all_urls>"
 		],
 		"js": [
-			"/js/content.js"
+			"/js/global.js","/js/content.js"
 		],
 		"all_frames": false
   }],

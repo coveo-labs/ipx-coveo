@@ -2,12 +2,6 @@
 // jshint -W003
 /*global chrome*/
 
-//*************************************************************************************** */
-//REPLACE WITH YOUR OWN
-//*************************************************************************************** */
-var g_IPXurl =
-  "https://platformhipaa.cloud.coveo.com/rest/organizations/coveononproductionmux3a10i/pages/a0591a31-a247-4d93-8def-c0219b87c620/inappwidget/loader";
-
 var added;
 var error;
 var previous;
@@ -26,8 +20,10 @@ let SendMessage = (parameters) => {
   setTimeout(() => {
     try {
       chrome.runtime.sendMessage(parameters);
-    } catch (e) {}
-  });
+    } catch (e) {
+      console.log(e);
+    }
+  }, 100);
 };
 
 added = false;
@@ -50,9 +46,18 @@ chrome.extension.onMessage.addListener(function (
 
   if (request.action == "CheckTokenUpdate") {
     console.log("COVEO IPX: Check if current token is still the same");
+    if (!added) {
+      g_loadattempts = g_loadattempts + 1;
+      if (g_loadattempts > 3) {
+        g_loadattempts = 0;
+        SendMessage({
+          type: "GetToken",
+        });
+      }
+    }
     if (added) {
       if (!error) {
-        if (g_token != request.token) {
+        if (g_token != request.token || request.token == undefined) {
           changeButtonToReload();
         } else {
           setContext();
@@ -63,9 +68,18 @@ chrome.extension.onMessage.addListener(function (
     console.log(
       "COVEO IPX: Check if current token is still the same, if so set Context"
     );
+    if (!added) {
+      g_loadattempts = g_loadattempts + 1;
+      if (g_loadattempts > 3) {
+        g_loadattempts = 0;
+        SendMessage({
+          type: "GetToken",
+        });
+      }
+    }
     if (added) {
       if (!error) {
-        if (g_token != request.token) {
+        if (g_token != request.token || request.token == undefined) {
           changeButtonToReload();
         }
         //Proceed to update the context
@@ -111,7 +125,7 @@ function addIPX(token) {
   const script = document.createElement("script");
   script.type = "text/javascript";
   script.id = "CoveoIPXScript";
-  script.src = g_IPXurl + "?search_token=" + token;
+  script.src = c_IPXurl + "?search_token=" + token;
   //script.onreadystatechange = IPXLoaded();
   script.onload = IPXLoaded();
 
@@ -137,15 +151,28 @@ function changeButtonToReload() {
   let v = document.getElementsByTagName("coveo-in-app-widget-loader")[0];
   if (v != undefined) {
     let button = v.shadowRoot.querySelector("button");
+    removeAllClicks(button);
+    button = v.shadowRoot.querySelector("button");
     button.innerText = "Reload page (new Token must be loaded)";
-    button.addEventListener(
-      "click",
-      function () {
-        window.location.reload();
-      },
-      false
-    );
+    button.setAttribute("onclick", "window.location.reload();");
   }
+}
+
+function onlyButton() {
+  let button = false;
+  let loc = String(window.location);
+  c_buttononly.forEach(function (url) {
+    if (loc.indexOf(url) >= 0) {
+      button = true;
+    }
+  });
+  return button;
+}
+
+function removeAllClicks(button){
+  var old_element = button;
+  var new_element = old_element.cloneNode(true);
+  old_element.parentNode.replaceChild(new_element, old_element);
 }
 
 function fixButton() {
@@ -175,29 +202,35 @@ function fixButton() {
   console.log("COVEO IPX: Fixing Button.");
   let button = v.shadowRoot.querySelector("button");
   button.style = "bottom: 50px !important;";
-  //Add onclick with our own
-  g_message = true;
-  button.addEventListener("click", function (e) {
-    if (!validToken()) {
-      e.preventDefault();
-      let v = document.getElementsByTagName("coveo-page-modal")[0];
-      if (v != null) v.remove();
-      g_message = false;
-      button.click();
-      g_message = true;
-      if (g_message) {
-        console.log("COVEO IPX: No valid token yet, we need to authenticate");
-        SendMessage({
-          type: "Authenticate",
-        });
+  if (onlyButton()) {
+    removeAllClicks(button);
+    button = v.shadowRoot.querySelector("button");
+    button.setAttribute("onclick", "window.open('"+c_url_hub+"','_blank');");
+  } else {
+    //Add onclick with our own
+    g_message = true;
+    button.addEventListener("click", function (e) {
+      if (!validToken()) {
+        e.preventDefault();
+        let v = document.getElementsByTagName("coveo-page-modal")[0];
+        if (v != null) v.remove();
+        g_message = false;
+        button.click();
+        g_message = true;
+        if (g_message) {
+          console.log("COVEO IPX: No valid token yet, we need to authenticate");
+          SendMessage({
+            type: "Authenticate",
+          });
+        }
       }
-    }
-  });
-  //If all went well, checkIPX and setContext
-  setTimeout(function () {
-    checkIPX();
-    setContext();
-  }, 1000);
+    });
+    //If all went well, checkIPX and setContext
+    setTimeout(function () {
+      checkIPX();
+      setContext();
+    }, 1000);
+  }
 }
 
 function setInProd(script) {
