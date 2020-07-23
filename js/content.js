@@ -93,6 +93,7 @@ chrome.extension.onMessage.addListener(function (
     //Simply add the IPX with the token requested, will also fix the button and will check if IPX is properly loaded
     g_token = request.token;
     addIPX(request.token);
+    
   }
 
   sendResponse({});
@@ -154,7 +155,7 @@ function changeButtonToReload() {
     removeAllClicks(button);
     button = v.shadowRoot.querySelector("button");
     button.innerText = "Reload page (new Token must be loaded)";
-    button.setAttribute("onclick", "window.location.reload();");
+    button.setAttribute("onclick", "javascript:document.location.reload(true);return false;");
   }
 }
 
@@ -205,7 +206,7 @@ function fixButton() {
   if (onlyButton()) {
     removeAllClicks(button);
     button = v.shadowRoot.querySelector("button");
-    button.setAttribute("onclick", "window.open('"+c_url_hub+"','_blank');");
+    button.setAttribute("onclick", "window.open('"+c_url_hub+"','_blank');return false;");
   } else {
     //Add onclick with our own
     g_message = true;
