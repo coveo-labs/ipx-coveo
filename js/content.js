@@ -43,7 +43,8 @@ chrome.extension.onMessage.addListener(function (
   sendResponse
 ) {
   console.log("COVEO IPX: Action = " + request.action);
-
+  console.log("COVEO IPX: Token = "+request.token);
+  console.log("COVEO IPX: Current Token = "+g_token);
   if (request.action == "CheckTokenUpdate") {
     console.log("COVEO IPX: Check if current token is still the same");
     if (!added) {
@@ -58,7 +59,8 @@ chrome.extension.onMessage.addListener(function (
     if (added) {
       if (!error) {
         if (g_token != request.token || request.token == undefined) {
-          changeButtonToReload();
+          //changeButtonToReload();
+          renewToken();
         } else {
           setContext();
         }
@@ -80,7 +82,8 @@ chrome.extension.onMessage.addListener(function (
     if (added) {
       if (!error) {
         if (g_token != request.token || request.token == undefined) {
-          changeButtonToReload();
+          //changeButtonToReload();
+          renewToken();
         }
         //Proceed to update the context
         setContext();
@@ -146,6 +149,13 @@ function validToken() {
     }
   } catch (e) {}
   return result;
+}
+
+function renewToken() {
+  console.log("Renew Token");
+  setInProd(
+    "CoveoInProduct.setRenewAccessTokenFunction(() => Promise.resolve('"+g_token+"'));"
+  );
 }
 
 function changeButtonToReload() {

@@ -40,7 +40,8 @@ function getCookies(domain, name, path, callback) {
         var curd = new Date();
         d.setUTCSeconds(exp);
         //console.log("[EXP DATE] => "+d);
-        d = d.setHours(d.getHours() - 20);
+        //d = d.setHours(d.getHours() - 20);
+        d = d.setHours(d.getHours());
         dn = new Date(d);
         //console.log("[EXP DATE - 20 Hours ] => "+dn);
         if (dn > curd) {
