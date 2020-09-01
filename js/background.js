@@ -2,6 +2,9 @@
 
 
 var g_window;
+var g_notlogged = false;
+var g_currentToken='';
+var g_expire;
 var g_token;
 var g_changed;
 var g_first;
@@ -9,6 +12,7 @@ var g_count = 0;
 var g_check;
 var g_afterauth;
 
+/*
 function getToken(token, value) {
   try {
     let jwt = token;
@@ -19,40 +23,27 @@ function getToken(token, value) {
   } catch (e) {
     return "";
   }
-}
+}*/
+g_window=false;
 
-function getCookies(domain, name, path, callback) {
-  chrome.cookies.getAll({}, function (cookies) {
-    var a = "";
-    //console.log("@getCookies. Cookies found " +  cookies.length);
-    cookies.forEach(function (cookie) {
-      //console.log("[COOKIE] => " + JSON.stringify(cookie));
-      if (
-        cookie.domain == domain &&
-        cookie.name == name &&
-        cookie.path == path
-      ) {
-        //console.log("[COOKIE] => " + JSON.stringify(cookie));
-        //Check expiration date
-        var exp = getToken(cookie.value, "exp");
-        var d = new Date(0);
-        var dn = new Date(0);
-        var curd = new Date();
-        d.setUTCSeconds(exp);
-        //console.log("[EXP DATE] => "+d);
-        //d = d.setHours(d.getHours() - 20);
-        d = d.setHours(d.getHours());
-        dn = new Date(d);
-        //console.log("[EXP DATE - 20 Hours ] => "+dn);
-        if (dn > curd) {
-          //console.log("[EXP DATE > Current ] => VALID TOKEN");
-          a = cookie.value;
-        } else {
-        }
-      }
-    });
-    callback(a);
-  });
+function setCookie()
+{
+  g_currentToken = g_token;
+  var dn = new Date();
+  dn.setHours(dn.getHours()+8);
+  g_expire = dn;
+  
+}
+function getCookies(callback) {
+  var dn = new Date();
+  if (dn>g_expire) {
+    g_currentToken = undefined;
+    g_notlogged = false;
+    callback("")
+  } else {
+    callback(g_currentToken);
+  }
+  
 }
 
 function debugAll() {
@@ -66,83 +57,38 @@ function debugAll() {
   });
 }
 
-function showNotification() {
-  // Now create the notification
-  chrome.notifications.create(
-    "reminder",
-    {
-      type: "basic",
-      iconUrl: "images/128.png",
-      title: "Don't forget!",
-      message: "In order to search, you need to authenticate first!",
-    },
-    function (notificationId) {}
-  );
-}
-
-chrome.notifications.onClicked.addListener(function () {
-  g_window = undefined;
-  checkTokenCookie(true, true, null);
-});
-
 chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
   if (msg.type === "Authenticate") {
     checkTokenCookie(true, true, null);
     return true;
   }
   if (msg.type === "GetToken") {
+    console.log("COVEO IPX: Received GetToken");
     checkTokenCookie(true, true, null);
     return true;
   }
 });
 
+
 function checkTokenCookie(openwindow, singletab, callback) {
   //Check cookie for proper access token
-  getCookies(c_domain, "access_token", c_page, function (token) {
+  getCookies(function (token) {
     if (token == "") {
       //Current token is empty, so we need to check if we need to authenticate
       g_token = undefined;
-
-      //If Authentication window is closed or not defined
-      if (g_window == undefined || g_window == null || g_window.closed) {
-        g_first = undefined;
+      if (g_window==false){
+        g_window = true;
+        getAccessToken(function(){
+          g_window=false;
+          if (g_notlogged) {
+            sentSignInToContent();
+          } else {
+            sentTokenToContent();
+          }
+        });
       }
-      if (g_first == undefined && openwindow) {
-        g_count = 0;
-        console.log("COVEO IPX: First check for access token...");
-        var showAlert = localStorage.getItem("coveo-ShowAlert");
-
-        if (showAlert == null) {
-          localStorage.setItem("coveo-ShowAlert", false);
-          alert(
-            "We do not have a valid token, you will be redirected to Coveo @ Coveo."
-          );
-        }
-
-        console.log("COVEO IPX: Authentication openend...");
-        g_afterauth = true;
-        g_window = window.open(c_url, "CoveoIPXAuthentication");
-        g_first = false;
-        if (singletab) {
-          //If waiting for the token we still need to sent an undefined token
-          sentTokenToContent();
-        }
-      } else {
-        console.log("COVEO IPX: Still no valid access token..." + g_count);
-        if (singletab) {
-          //If waiting for the token we still need to sent an undefined token
-          sentTokenToContent();
-        }
-
-        g_count = g_count + 1;
-        //After 50 attempts launch a notification window
-        if (g_count > 50) {
-          g_first = undefined;
-          showNotification();
-        }
-      }
+      
     } else {
-      if (g_window != undefined) g_window.close();
       console.log("COVEO IPX: Token is => " + token);
 
       if (g_token != token) {
@@ -172,12 +118,14 @@ function checkTokenCookie(openwindow, singletab, callback) {
   });
 }
 
+
 function sentTokenToContent() {
   //Sending the initial token after page load in content.js to content.js
   getTabId_Then(function (g_tab) {
     if (g_tab != undefined) {
       let reload = false;
       if (g_afterauth != undefined) reload = true;
+      console.log("Sending Token action");
       chrome.tabs.sendMessage(
         g_tab,
         { action: "Token", token: g_token, reload: reload },
@@ -189,6 +137,44 @@ function sentTokenToContent() {
     }
   });
 }
+
+
+function sentSignInToContent() {
+  //Sending the initial token after page load in content.js to content.js
+  getTabId_Then(function (g_tab) {
+    if (g_tab != undefined) {
+      let reload = false;
+      if (g_afterauth != undefined) reload = true;
+      chrome.tabs.sendMessage(
+        g_tab,
+        { action: "SignIn", token: g_token, reload: reload },
+        function (response) {
+          g_afterauth = undefined;
+          //console.log(response);
+        }
+      );
+    }
+  });
+}
+
+/*
+function sentToken() {
+  //Sending the initial token after page load in content.js to content.js
+  getTabId_Then(function (g_tab) {
+    if (g_tab != undefined) {
+      let reload = false;
+      if (g_afterauth != undefined) reload = true;
+      chrome.tabs.sendMessage(
+        g_tab,
+        { action: "GetToken", token: g_token, reload: reload },
+        function (response) {
+          g_afterauth = undefined;
+          //console.log(response);
+        }
+      );
+    }
+  });
+}*/
 
 
 function sentUpdateToContent() {
@@ -260,4 +246,138 @@ chrome.tabs.onUpdated.addListener(function (tabId, info, tab) {
   sentUpdateToContent();
 });
 
-chrome.browserAction.onClicked.addListener(function (tab) {});
+
+
+
+function xhrCheckToken(url, token, callback) {
+  // Send the POST Request
+  let xhttp = new XMLHttpRequest();
+  xhttp.open('POST', url+token+"&platform="+c_platform+"&secret="+c_secret, true);
+  xhttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded; charset=UTF-8');
+  //console.log(xhttp);
+  xhttp.onload = function () {
+    callback(xhttp.response);
+  }
+  xhttp.send();
+  return xhttp;
+}
+
+function getAccessToken(callback){
+  // Using chrome.identity
+  var manifest = chrome.runtime.getManifest();
+  /*chrome.identity.getAuthToken({interactive: true}, function(token) {
+    console.log(token);
+  });*/
+  var clientId = encodeURIComponent(manifest.oauth2.client_id);
+  var scopes = encodeURIComponent(manifest.oauth2.scopes.join(' '));
+  //var redirectUri = encodeURIComponent('https://' + chrome.runtime.id + '.chromiumapp.org');
+  //var redirectUri = encodeURIComponent('https://ipxcoveo.chromiumapp.org/');
+  var redirectUri = chrome.identity.getRedirectURL("oauth2");
+  var url = 'https://accounts.google.com/o/oauth2/auth' + 
+            '?client_id=' + clientId + 
+            '&response_type=id_token' +
+            '&access_type=offline' + 
+            '&redirect_uri=' + redirectUri + 
+            '&nonce=ipxcoveo'+
+            '&scope=' + scopes;
+
+  var logged=false;
+  chrome.identity.launchWebAuthFlow(
+      {
+          'url': url, 
+          'interactive':false
+      }, 
+      function(redirectedTo) {
+          if (chrome.runtime.lastError) {
+              // Example: Authorization page could not be loaded.
+              g_notlogged = true;
+              console.log(chrome.runtime.lastError.message);
+          }
+          else {
+              g_notlogged = false;
+              logged=true;
+              var response = redirectedTo.split('#', 2)[1];
+              console.log(response);
+              //Now connect to node application to get access_token
+              var token=response.split('&')[0].split('=')[1];
+              let responsexhr=xhrCheckToken(c_tokenserver, token, function(req){
+                let jsonresp=JSON.parse(req);
+                if (jsonresp['valid']==true){
+                  g_token=jsonresp['access_token'];
+                  setCookie();
+                }
+                else {
+                  g_token = undefined;
+                }
+                callback();
+  
+              });
+              
+          }
+      }
+  );
+  if (!logged){
+   url = 'https://accounts.google.com/o/oauth2/auth' + 
+    '?client_id=' + clientId + 
+    '&response_type=id_token' +
+    '&access_type=offline' + 
+    '&prompt=select_account' +
+    '&redirect_uri=' + redirectUri + 
+    '&nonce=ipxcoveo'+
+    '&scope=' + scopes;
+  chrome.identity.launchWebAuthFlow(
+      {
+          'url': url, 
+          'interactive':true
+      }, 
+      function(redirectedTo) {
+          if (chrome.runtime.lastError) {
+              // Example: Authorization page could not be loaded.
+              g_notlogged = true;
+              console.log(chrome.runtime.lastError.message);
+          }
+          else {
+              g_notlogged = false;
+              logged=true;
+              var response = redirectedTo.split('#', 2)[1];
+              console.log(response);
+              //Now connect to node application to get access_token
+              var token=response.split('&')[0].split('=')[1];
+              let responsexhr=xhrCheckToken(c_tokenserver, token, function(req){
+                let jsonresp=JSON.parse(req);
+                if (jsonresp['valid']==true){
+                  g_token=jsonresp['access_token'];
+                  setCookie();
+                }
+                else {
+                  g_token = undefined;
+                }
+                callback();
+  
+              });
+              
+          }
+      }
+  );
+  }
+}
+
+chrome.browserAction.onClicked.addListener(function (tab) {
+  //checkTokenw();
+  //sentToken();
+  //g_notlogged=true;
+  //getAccessToken();
+  //sentSignInToContent();
+  //checkTokenCookie(true, true, null);
+  //getAccessToken(function(){console.log(g_token)});
+  /*chrome.identity.getProfileUserInfo(function(userinfo){
+    console.log("userinfo",userinfo);
+    try {
+    email=userinfo.email;
+    checkUser();
+    console.log("email",email);
+    } catch(e){
+      console.log("email not found, first login to google!");
+    }
+  });*/
+});

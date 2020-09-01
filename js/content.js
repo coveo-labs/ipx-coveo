@@ -37,6 +37,8 @@ SendMessage({
 // 2 response.token is new --> we need to reload the current page
 // 3 response.token is current --> we need to do nothing
 
+
+
 chrome.extension.onMessage.addListener(function (
   request,
   sender,
@@ -45,11 +47,17 @@ chrome.extension.onMessage.addListener(function (
   console.log("COVEO IPX: Action = " + request.action);
   console.log("COVEO IPX: Token = "+request.token);
   console.log("COVEO IPX: Current Token = "+g_token);
-  if (request.action == "CheckTokenUpdate") {
-    console.log("COVEO IPX: Check if current token is still the same");
+  if (request.action == "SignIn") {
+    changeButtonToReload();
+  }
+  else if (request.action == "CheckTokenUpdate") {
+    console.log("COVEO IPX: Check if current token is still the same, added="+added);
     if (!added) {
+      console.log("COVEO IPX: Sending back GetToken, attempt="+g_loadattempts);
       g_loadattempts = g_loadattempts + 1;
       if (g_loadattempts > 3) {
+        //addIPX(request.token);
+        //setTimeout( function() {changeButtonToReload();}, 500);
         g_loadattempts = 0;
         SendMessage({
           type: "GetToken",
@@ -73,6 +81,8 @@ chrome.extension.onMessage.addListener(function (
     if (!added) {
       g_loadattempts = g_loadattempts + 1;
       if (g_loadattempts > 3) {
+        //addIPX(request.token);
+        //setTimeout( function() {changeButtonToReload();}, 500);
         g_loadattempts = 0;
         SendMessage({
           type: "GetToken",
@@ -94,13 +104,27 @@ chrome.extension.onMessage.addListener(function (
       "COVEO IPX: Received Token, after page load. Happens only once."
     );
     //Simply add the IPX with the token requested, will also fix the button and will check if IPX is properly loaded
-    g_token = request.token;
-    addIPX(request.token);
+    if (added) {
+      if (!error) {
+        if (g_token != request.token || request.token == undefined) {
+          //changeButtonToReload();
+          renewToken();
+        }
+        //Proceed to update the context
+        setContext();
+      }
+    } else {
+      g_token = request.token;
+      addIPX(request.token);
+    }
+    
     
   }
 
   sendResponse({});
 });
+
+
 
 function removeButton() {
   try {
@@ -129,7 +153,7 @@ function addIPX(token) {
   const script = document.createElement("script");
   script.type = "text/javascript";
   script.id = "CoveoIPXScript";
-  script.src = c_IPXurl + "?search_token=" + token;
+  script.src = c_IPXurl + "?access_token=" + token;
   //script.onreadystatechange = IPXLoaded();
   script.onload = IPXLoaded();
 
@@ -137,26 +161,18 @@ function addIPX(token) {
 }
 
 function validToken() {
-  let result = false;
-  try {
-    let jwt = g_token;
-    jwt = jwt.split(".")[1];
-    jwt = jwt.replace(/-/g, "+").replace(/_/g, "/");
-    jwt = JSON.parse(window.atob(jwt));
-    let name = jwt["userIds"][0].name;
-    if (name.indexOf("anonymous@") == -1) {
-      result = true;
-    }
-  } catch (e) {}
-  return result;
+  return true;
+  
 }
 
 function renewToken() {
   console.log("Renew Token");
   setInProd(
-    "CoveoInProduct.setRenewAccessTokenFunction(() => Promise.resolve('"+g_token+"'));"
+    "CoveoInProduct.setRenewAccessTokenFunction(function(){console.log('COVEO IPX: RenewIsCalled');Promise.resolve('"+g_token+"');});"
   );
 }
+
+
 
 function changeButtonToReload() {
   let v = document.getElementsByTagName("coveo-in-app-widget-loader")[0];
@@ -164,7 +180,7 @@ function changeButtonToReload() {
     let button = v.shadowRoot.querySelector("button");
     removeAllClicks(button);
     button = v.shadowRoot.querySelector("button");
-    button.innerText = "Reload page (new Token must be loaded)";
+    button.innerText = "Sign In to Google";
     button.setAttribute("onclick", "javascript:document.location.reload(true);return false;");
   }
 }
@@ -209,7 +225,7 @@ function fixButton() {
       return;
     }
   }
-
+  //renewToken();
   console.log("COVEO IPX: Fixing Button.");
   let button = v.shadowRoot.querySelector("button");
   button.style = "bottom: 50px !important;";

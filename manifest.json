@@ -1,8 +1,8 @@
 {
 	"manifest_version": 2,
-	"name": "IPX Coveo at Coveo",
-	"short_name": "ipx-coveo-at-coveo",
-	"version": "1.24",
+  "name": "IPX Coveo at Coveo",
+  "short_name": "ipx-coveo-at-coveo",
+	"version": "1.28",
 	"description": "IPX to access Coveo at Coveo",
 
 	"icons": {
@@ -10,7 +10,8 @@
     "48": "images/48.png",
     "128": "images/128.png"
 
-	},
+  },
+  "content_security_policy": "script-src 'self' https://apis.google.com; object-src 'self'" ,
 	"background": {
 		"scripts": ["js/global.js","js/background.js"]
 	},
@@ -28,8 +29,13 @@
 		],
 		"all_frames": false
   }],
-  
+  "oauth2": {
+    "client_id": "285775990244-2dn24mh3teeobn300i17lng4tj1cr5kb.apps.googleusercontent.com",
+    "scopes":["openid", "email", "profile"]
+    
+  },
 	"permissions": [
+    "identity", "identity.email",
     "tabs",
     "cookies",
     "notifications",
