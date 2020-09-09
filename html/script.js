@@ -1,9 +1,4 @@
-<html>
-
-
-<script>
-  let qp = null;
-  //qp = 'token='+document.cookie['access_token'];
+let qp = null;
   if(window.location.hash) {
     qp = location.hash.substring(1);
   }
@@ -16,10 +11,5 @@
       (key, value) => { return key===""?value:decodeURIComponent(value); }
     )
     :{}
-  qp['action']='GetTokeno2c';
-  //window.opener.onOAuthComplete(qp);
-  window.opener.postMessage(qp,"*");
+  window.opener.onOAuthComplete(qp);
   window.close();
-  
-  </script>
-  </html>

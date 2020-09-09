@@ -24,7 +24,7 @@ function getToken(token, value) {
     return "";
   }
 }*/
-g_window=false;
+
 
 function setCookie()
 {
@@ -32,6 +32,7 @@ function setCookie()
   var dn = new Date();
   dn.setHours(dn.getHours()+8);
   g_expire = dn;
+  g_count = 0;
   
 }
 function getCookies(callback) {
@@ -75,7 +76,15 @@ function checkTokenCookie(openwindow, singletab, callback) {
   getCookies(function (token) {
     if (token == "") {
       //Current token is empty, so we need to check if we need to authenticate
-      g_token = undefined;
+      g_count = g_count +1;
+      //Check if we have to many attempts opening the window.
+      if (g_count>100 && g_window != undefined) {
+        g_window.close();
+        g_window=undefined;
+        g_count=0;
+      }
+      doLogin();
+      /*g_token = undefined;
       if (g_window==false){
         g_window = true;
         getAccessToken(function(){
@@ -86,7 +95,7 @@ function checkTokenCookie(openwindow, singletab, callback) {
             sentTokenToContent();
           }
         });
-      }
+      }*/
       
     } else {
       console.log("COVEO IPX: Token is => " + token);
@@ -248,7 +257,48 @@ chrome.tabs.onUpdated.addListener(function (tabId, info, tab) {
 
 
 
+function doLogin() {
+  if (g_window==undefined){
+    g_window = window.open(c_oauth, "Authenticate against Coveo", "width=600,height=800,top=200,left=200");
+    g_window.onclose = function () { g_window=undefined; }
+  }
+}
 
+function onOAuthComplete(qp) {
+  g_window=undefined;
+  g_token=qp.access_token;
+  setCookie();
+  validateToken();
+}
+
+
+function xhrCheckToken() {
+  // Send the POST Request
+  let xhttp = new XMLHttpRequest();
+  xhttp.open('POST', `https://${c_platform}/oauth/check_token`, false);
+  xhttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded; charset=UTF-8');
+
+  xhttp.setRequestHeader('Authorization', 'Bearer '+g_token); //jsadmin
+
+  xhttp.send( 'token=' + g_token );
+
+  return xhttp;
+}
+
+
+function validateToken() {
+  let xhttp = xhrCheckToken();
+  let response = JSON.parse(xhttp.responseText);
+
+  let bTokenIsValid = (xhttp.status === 200);
+  if (!bTokenIsValid) {
+     g_token=undefined;
+  } else {
+    checkTokenCookie(true, true, null);
+  }
+}
+
+/*
 function xhrCheckToken(url, token, callback) {
   // Send the POST Request
   let xhttp = new XMLHttpRequest();
@@ -260,107 +310,107 @@ function xhrCheckToken(url, token, callback) {
   }
   xhttp.send();
   return xhttp;
-}
+}*/
 
-function getAccessToken(callback){
-  // Using chrome.identity
-  var manifest = chrome.runtime.getManifest();
-  /*chrome.identity.getAuthToken({interactive: true}, function(token) {
-    console.log(token);
-  });*/
-  var clientId = encodeURIComponent(manifest.oauth2.client_id);
-  var scopes = encodeURIComponent(manifest.oauth2.scopes.join(' '));
-  //var redirectUri = encodeURIComponent('https://' + chrome.runtime.id + '.chromiumapp.org');
-  //var redirectUri = encodeURIComponent('https://ipxcoveo.chromiumapp.org/');
-  var redirectUri = chrome.identity.getRedirectURL("oauth2");
-  var url = 'https://accounts.google.com/o/oauth2/auth' + 
-            '?client_id=' + clientId + 
-            '&response_type=id_token' +
-            '&access_type=offline' + 
-            '&redirect_uri=' + redirectUri + 
-            '&nonce=ipxcoveo'+
-            '&scope=' + scopes;
+// function getAccessToken(callback){
+//   // Using chrome.identity
+//   var manifest = chrome.runtime.getManifest();
+//   /*chrome.identity.getAuthToken({interactive: true}, function(token) {
+//     console.log(token);
+//   });*/
+//   var clientId = encodeURIComponent(manifest.oauth2.client_id);
+//   var scopes = encodeURIComponent(manifest.oauth2.scopes.join(' '));
+//   //var redirectUri = encodeURIComponent('https://' + chrome.runtime.id + '.chromiumapp.org');
+//   //var redirectUri = encodeURIComponent('https://ipxcoveo.chromiumapp.org/');
+//   var redirectUri = chrome.identity.getRedirectURL("oauth2");
+//   var url = 'https://accounts.google.com/o/oauth2/auth' + 
+//             '?client_id=' + clientId + 
+//             '&response_type=id_token' +
+//             '&access_type=offline' + 
+//             '&redirect_uri=' + redirectUri + 
+//             '&nonce=ipxcoveo'+
+//             '&scope=' + scopes;
 
-  var logged=false;
-  chrome.identity.launchWebAuthFlow(
-      {
-          'url': url, 
-          'interactive':false
-      }, 
-      function(redirectedTo) {
-          if (chrome.runtime.lastError) {
-              // Example: Authorization page could not be loaded.
-              g_notlogged = true;
-              console.log(chrome.runtime.lastError.message);
-          }
-          else {
-              g_notlogged = false;
-              logged=true;
-              var response = redirectedTo.split('#', 2)[1];
-              console.log(response);
-              //Now connect to node application to get access_token
-              var token=response.split('&')[0].split('=')[1];
-              let responsexhr=xhrCheckToken(c_tokenserver, token, function(req){
-                let jsonresp=JSON.parse(req);
-                if (jsonresp['valid']==true){
-                  g_token=jsonresp['access_token'];
-                  setCookie();
-                }
-                else {
-                  g_token = undefined;
-                }
-                callback();
+//   var logged=false;
+//   chrome.identity.launchWebAuthFlow(
+//       {
+//           'url': url, 
+//           'interactive':false
+//       }, 
+//       function(redirectedTo) {
+//           if (chrome.runtime.lastError) {
+//               // Example: Authorization page could not be loaded.
+//               g_notlogged = true;
+//               console.log(chrome.runtime.lastError.message);
+//           }
+//           else {
+//               g_notlogged = false;
+//               logged=true;
+//               var response = redirectedTo.split('#', 2)[1];
+//               console.log(response);
+//               //Now connect to node application to get access_token
+//               var token=response.split('&')[0].split('=')[1];
+//               let responsexhr=xhrCheckToken(c_tokenserver, token, function(req){
+//                 let jsonresp=JSON.parse(req);
+//                 if (jsonresp['valid']==true){
+//                   g_token=jsonresp['access_token'];
+//                   setCookie();
+//                 }
+//                 else {
+//                   g_token = undefined;
+//                 }
+//                 callback();
   
-              });
+//               });
               
-          }
-      }
-  );
-  if (!logged){
-   url = 'https://accounts.google.com/o/oauth2/auth' + 
-    '?client_id=' + clientId + 
-    '&response_type=id_token' +
-    '&access_type=offline' + 
-    '&prompt=select_account' +
-    '&redirect_uri=' + redirectUri + 
-    '&nonce=ipxcoveo'+
-    '&scope=' + scopes;
-  chrome.identity.launchWebAuthFlow(
-      {
-          'url': url, 
-          'interactive':true
-      }, 
-      function(redirectedTo) {
-          if (chrome.runtime.lastError) {
-              // Example: Authorization page could not be loaded.
-              g_notlogged = true;
-              console.log(chrome.runtime.lastError.message);
-          }
-          else {
-              g_notlogged = false;
-              logged=true;
-              var response = redirectedTo.split('#', 2)[1];
-              console.log(response);
-              //Now connect to node application to get access_token
-              var token=response.split('&')[0].split('=')[1];
-              let responsexhr=xhrCheckToken(c_tokenserver, token, function(req){
-                let jsonresp=JSON.parse(req);
-                if (jsonresp['valid']==true){
-                  g_token=jsonresp['access_token'];
-                  setCookie();
-                }
-                else {
-                  g_token = undefined;
-                }
-                callback();
+//           }
+//       }
+//   );
+//   if (!logged){
+//    url = 'https://accounts.google.com/o/oauth2/auth' + 
+//     '?client_id=' + clientId + 
+//     '&response_type=id_token' +
+//     '&access_type=offline' + 
+//     '&prompt=select_account' +
+//     '&redirect_uri=' + redirectUri + 
+//     '&nonce=ipxcoveo'+
+//     '&scope=' + scopes;
+//   chrome.identity.launchWebAuthFlow(
+//       {
+//           'url': url, 
+//           'interactive':true
+//       }, 
+//       function(redirectedTo) {
+//           if (chrome.runtime.lastError) {
+//               // Example: Authorization page could not be loaded.
+//               g_notlogged = true;
+//               console.log(chrome.runtime.lastError.message);
+//           }
+//           else {
+//               g_notlogged = false;
+//               logged=true;
+//               var response = redirectedTo.split('#', 2)[1];
+//               console.log(response);
+//               //Now connect to node application to get access_token
+//               var token=response.split('&')[0].split('=')[1];
+//               let responsexhr=xhrCheckToken(c_tokenserver, token, function(req){
+//                 let jsonresp=JSON.parse(req);
+//                 if (jsonresp['valid']==true){
+//                   g_token=jsonresp['access_token'];
+//                   setCookie();
+//                 }
+//                 else {
+//                   g_token = undefined;
+//                 }
+//                 callback();
   
-              });
+//               });
               
-          }
-      }
-  );
-  }
-}
+//           }
+//       }
+//   );
+//   }
+// }
 
 chrome.browserAction.onClicked.addListener(function (tab) {
   //checkTokenw();
