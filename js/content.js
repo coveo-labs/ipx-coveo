@@ -45,15 +45,15 @@ chrome.extension.onMessage.addListener(function (
   sendResponse
 ) {
   console.log("COVEO IPX: Action = " + request.action);
-  console.log("COVEO IPX: Token = "+request.token);
-  console.log("COVEO IPX: Current Token = "+g_token);
+  console.log("COVEO IPX: Token = " + request.token);
+  console.log("COVEO IPX: Current Token = " + g_token);
   if (request.action == "SignIn") {
     changeButtonToReload();
   }
   else if (request.action == "CheckTokenUpdate") {
-    console.log("COVEO IPX: Check if current token is still the same, added="+added);
+    console.log("COVEO IPX: Check if current token is still the same, added=" + added);
     if (!added) {
-      console.log("COVEO IPX: Sending back GetToken, attempt="+g_loadattempts);
+      console.log("COVEO IPX: Sending back GetToken, attempt=" + g_loadattempts);
       g_loadattempts = g_loadattempts + 1;
       if (g_loadattempts > 3) {
         //addIPX(request.token);
@@ -117,8 +117,8 @@ chrome.extension.onMessage.addListener(function (
       g_token = request.token;
       addIPX(request.token);
     }
-    
-    
+
+
   }
 
   sendResponse({});
@@ -130,7 +130,7 @@ function removeButton() {
   try {
     let v = document.getElementsByTagName("coveo-in-app-widget-loader")[0];
     v.remove();
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function removeIPX() {
@@ -162,13 +162,13 @@ function addIPX(token) {
 
 function validToken() {
   return true;
-  
+
 }
 
 function renewToken() {
   console.log("Renew Token");
   setInProd(
-    "CoveoInProduct.setRenewAccessTokenFunction(function(){console.log('COVEO IPX: RenewIsCalled');Promise.resolve('"+g_token+"');});"
+    "CoveoInProduct.setRenewAccessTokenFunction(function(){console.log('COVEO IPX: RenewIsCalled');Promise.resolve('" + g_token + "');});"
   );
 }
 
@@ -196,7 +196,7 @@ function onlyButton() {
   return button;
 }
 
-function removeAllClicks(button){
+function removeAllClicks(button) {
   var old_element = button;
   var new_element = old_element.cloneNode(true);
   old_element.parentNode.replaceChild(new_element, old_element);
@@ -232,7 +232,7 @@ function fixButton() {
   if (onlyButton()) {
     removeAllClicks(button);
     button = v.shadowRoot.querySelector("button");
-    button.setAttribute("onclick", "window.open('"+c_url_hub+"','_blank');return false;");
+    button.setAttribute("onclick", "window.open('" + c_url_hub + "','_blank');return false;");
   } else {
     //Add onclick with our own
     g_message = true;
@@ -344,18 +344,18 @@ function setContext() {
         title = document.title;
         contexttouse = "" + title + "";
         contextkey = "title";
-      } catch (e) {}
+      } catch (e) { }
       //Better (for confluence and jira)
       try {
         title = document.querySelector('meta[name="ajs-page-title"]').content;
         contexttouse = "" + title + "";
         contextkey = "title";
-      } catch (e) {}
+      } catch (e) { }
       try {
         title = document.querySelector("h1").innerText;
         contexttouse = "" + title + "";
         contextkey = "title";
-      } catch (e) {}
+      } catch (e) { }
 
       //Better (for Bolstra)
       try {
@@ -365,13 +365,13 @@ function setContext() {
           ).avatar - name;
         contexttouse = "" + title + "";
         contextkey = "title";
-      } catch (e) {}
+      } catch (e) { }
       //Google sets a better og:title, so use that
       try {
         gotitle = document.querySelector('meta[property="og:title"]').content;
         contexttouse = "" + gotitle + "";
         contextkey = "title";
-      } catch (e) {}
+      } catch (e) { }
       //Specific ones
       //*********************
       //Google Drive
@@ -462,27 +462,27 @@ function setContext() {
           if (contextkey == "title") {
             setInProd(
               "CoveoInProduct.setContextValue('" +
-                contextkey +
-                "','" +
-                contexttouse +
-                "');"
+              contextkey +
+              "','" +
+              contexttouse +
+              "');"
             );
             setInProd(
               "CoveoInProduct.setContextValue('" +
-                contextkey +
-                "Str','" +
-                '"' +
-                contexttouse +
-                '"' +
-                "');"
+              contextkey +
+              "Str','" +
+              '"' +
+              contexttouse +
+              '"' +
+              "');"
             );
           } else {
             setInProd(
               "CoveoInProduct.setContextValue('" +
-                contextkey +
-                "','" +
-                contexttouse +
-                "');"
+              contextkey +
+              "','" +
+              contexttouse +
+              "');"
             );
           }
         }
