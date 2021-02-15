@@ -1,45 +1,45 @@
 {
-	"manifest_version": 2,
+  "manifest_version": 2,
   "name": "IPX Coveo at Coveo",
   "short_name": "ipx-coveo-at-coveo",
-	"version": "1.28",
-	"description": "IPX to access Coveo at Coveo",
+  "version": "1.30",
+  "description": "IPX to access Coveo at Coveo",
 
-	"icons": {
-		"16": "images/16.png",
+  "icons": {
+    "16": "images/16.png",
     "48": "images/48.png",
     "128": "images/128.png"
 
   },
-  "content_security_policy": "script-src 'self' https://apis.google.com; object-src 'self'" ,
-	"background": {
-		"scripts": ["js/global.js","js/background.js"]
-	},
-	"browser_action": {
-		"default_icon": "/images/icon.png"
-	},
+  "content_security_policy": "script-src 'self' https://apis.google.com; object-src 'self'",
+  "background": {
+    "scripts": ["js/global.js", "js/background.js"]
+  },
+  "browser_action": {
+    "default_icon": "/images/icon.png"
+  },
 
-	"content_scripts": [{
-		"run_at": "document_end",
-		"matches": [
-			"<all_urls>"
-		],
-		"js": [
-			"/js/global.js","/js/content.js"
-		],
-		"all_frames": false
+  "content_scripts": [{
+    "run_at": "document_end",
+    "matches": [
+      "<all_urls>"
+    ],
+    "js": [
+      "/js/global.js", "/js/content.js"
+    ],
+    "all_frames": false
   }],
   "oauth2": {
     "client_id": "285775990244-2dn24mh3teeobn300i17lng4tj1cr5kb.apps.googleusercontent.com",
-    "scopes":["openid", "email", "profile"]
-    
+    "scopes": ["openid", "email", "profile"]
+
   },
-	"permissions": [
+  "permissions": [
     "identity", "identity.email",
     "tabs",
     "cookies",
     "notifications",
     "*://*/"
-	]
+  ]
 
 }
